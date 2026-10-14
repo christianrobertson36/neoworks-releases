@@ -1,0 +1,9 @@
+{
+  "appId": "NeoWorks.Launcher",
+  "version": "0.2.1",
+  "runtime": "native",
+  "channel": "preview",
+  "size": 5668786,
+  "sha256": "7343469063f727c56455b50722c73be4b944359de6ffcff55cc56db126182018",
+  "releaseNotes": "Native Rust launcher preview: separate app downloads, checksum-verified installation with recovery, automatic app update checks while open, and a public app catalogue configured by default. App packages and the Rust Photo rewrite are still being prepared; this ZIP contains the launcher only."
+}
