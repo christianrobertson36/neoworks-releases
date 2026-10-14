@@ -4,6 +4,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import tempfile
 import urllib.parse
@@ -70,6 +71,26 @@ def validate(folder):
         raise ValueError("Invalid package size")
     with zipfile.ZipFile(package) as archive:
         names = archive.namelist()
+        if len(names) > 20000 or sum(info.file_size for info in archive.infolist()) > 4 * 1024**3:
+            raise ValueError("Expanded archive exceeds installer limits")
+        seen = set()
+        for info in archive.infolist():
+            name = info.filename
+            if not name or name.startswith("/") or any(char in name for char in '\\:\x00<>"|?*') or any(ord(char) < 32 for char in name):
+                raise ValueError("Unsafe archive path")
+            if name.lower() in seen:
+                raise ValueError("Duplicate Windows archive path")
+            seen.add(name.lower())
+            for part in name.rstrip("/").split("/"):
+                stem = part.split(".")[0].upper()
+                if not part or part in (".", "..") or part.endswith((".", " ")) or stem in ("CON", "PRN", "AUX", "NUL") or re.fullmatch(r"(COM|LPT)[0-9]", stem):
+                    raise ValueError("Unsafe Windows archive path")
+            if (info.external_attr >> 16) & 0o170000 == 0o120000:
+                raise ValueError("Archive links are unsupported")
+            if info.flag_bits & 1 or info.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
+                raise ValueError("Unsupported archive encoding")
+        if archive.testzip() is not None:
+            raise ValueError("Corrupt archive entry")
         if APPS[app] not in names:
             raise ValueError("Missing app executable")
         if metadata["runtime"] == "dotnet":
@@ -87,7 +108,7 @@ def publish(folder):
     release = subprocess.run(["gh", "release", "view", tag, "--repo", REPO], capture_output=True)
     with tempfile.TemporaryDirectory() as temp:
         asset = pathlib.Path(temp) / filename
-        asset.write_bytes(package.read_bytes())
+        shutil.copyfile(package, asset)
         if release.returncode:
             args = ["release", "create", tag, str(asset), "--repo", REPO,
                     "--title", f"{app} {version}", "--notes",

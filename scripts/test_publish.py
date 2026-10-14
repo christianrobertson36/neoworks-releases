@@ -39,6 +39,27 @@ class PublicationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 publisher.validate(folder)
 
+    def test_installer_incompatible_archives_are_rejected(self):
+        for bad in ["../outside.exe", "CON.txt", "images\\logo.png", "data.", "image?.png", "neoworks.photo.EXE", "link"]:
+            with self.subTest(bad=bad), tempfile.TemporaryDirectory() as temporary:
+                folder = pathlib.Path(temporary)
+                archive = folder / "package.zip"
+                with zipfile.ZipFile(archive, "w") as output:
+                    output.writestr("NeoWorks.Photo.exe", b"fixture")
+                    if bad == "link":
+                        info = zipfile.ZipInfo("link")
+                        info.create_system = 3
+                        info.external_attr = 0o120777 << 16
+                        output.writestr(info, b"outside")
+                    else:
+                        output.writestr(bad, b"fixture")
+                metadata = {"appId": "NeoWorks.Photo", "version": "9.0.0-rust.1",
+                            "runtime": "native", "channel": "preview",
+                            "sha256": publisher.digest(archive), "size": archive.stat().st_size}
+                (folder / "release.json").write_text(json.dumps(metadata))
+                with self.assertRaises(ValueError):
+                    publisher.validate(folder)
+
 
 if __name__ == "__main__":
     unittest.main()
