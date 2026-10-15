@@ -3,12 +3,12 @@
   "apps": [
     {
       "appId": "NeoWorks.Photo",
-      "version": "9.0.0-preview.1",
+      "version": "9.0.0-preview.2",
       "runtime": "native",
-      "sha256": "0ad46ebbffccff8d227943bc4e9691ab166fda935cedab98ea97dbc93fa28e2a",
-      "size": 8363691,
-      "url": "https://github.com/christianrobertson36/neoworks-releases/releases/download/NeoWorks.Photo-v9.0.0-preview.1-preview/NeoWorks.Photo-9.0.0-preview.1-Windows-x64.zip",
-      "releaseNotes": "NeoPhoto early Windows x64 preview: native Rust editor and shared-engine CLI, no required account. Painting/erasing, rectangle selection, layers, undo/redo, whole-layer adjustments, project saving and PNG/JPEG export. Unsupported project data is retained; export is blocked for unsupported rendering features. Full legacy parity, PSD, colour-managed editing, high bit depth and advanced tools remain unfinished. Install separately using launcher Settings > Preview > Check app versions."
+      "sha256": "f27fef943587fe6f5dd2caf4ea53b9523bb1bb054cf440646e21ddf210bc4c34",
+      "size": 8135985,
+      "url": "https://github.com/christianrobertson36/neoworks-releases/releases/download/NeoWorks.Photo-v9.0.0-preview.2-preview/NeoWorks.Photo-9.0.0-preview.2-Windows-x64.zip",
+      "releaseNotes": "Native Rust NeoPhoto Preview 2. Defaults to DirectX 12 on Windows to avoid Intel Vulkan driver startup crashes. Existing document/editing features remain a preview; advanced editing parity is in progress."
     }
   ]
 }
