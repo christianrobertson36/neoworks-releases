@@ -1,0 +1,130 @@
+name: Publish verified NeoPhoto Preview 4
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/neophoto-preview-3.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: public-release-catalogue
+  cancel-in-progress: false
+jobs:
+  publish:
+    timeout-minutes: 45
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Retrieve and verify source Windows build artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_READ_TOKEN: ${{ secrets.NEOWORKS_SOURCE_READ_TOKEN }}
+        run: |
+          python - <<'PY'
+          import hashlib, io, json, os, pathlib, urllib.request, urllib.parse, zipfile, time
+          import sys
+          sys.path.insert(0, 'scripts')
+          import publish
+          token = os.environ.get('SOURCE_READ_TOKEN', '')
+          if not token:
+              raise SystemExit('Set repository Actions secret NEOWORKS_SOURCE_READ_TOKEN with read access to the private neoworks repository')
+          source_api = 'https://api.github.com/repos/christianrobertson36/neoworks'
+          headers = {'Authorization': 'Bearer ' + token,
+                     'Accept': 'application/vnd.github+json',
+                     'X-GitHub-Api-Version': '2022-11-28'}
+          def source_json(path):
+              with urllib.request.urlopen(urllib.request.Request(source_api + path, headers=headers), timeout=90) as response:
+                  return json.load(response)
+          run_id = 38777603437
+          source_sha = '77984252c480479ae533e4566cc6f5e2a1193f0e'
+          for _ in range(100):
+              run = source_json('/actions/runs/' + str(run_id))
+              assert run['head_sha'] == source_sha, 'Unexpected source revision'
+              if run['status'] == 'completed':
+                  assert run['conclusion'] == 'success', 'Source Windows CI did not pass'
+                  break
+              time.sleep(20)
+          else:
+              raise SystemExit('Timed out waiting for verified Windows CI')
+          artifacts = source_json('/actions/runs/' + str(run_id) + '/artifacts')['artifacts']
+          matching = [artifact for artifact in artifacts if
+                      artifact['name'] == 'NeoPhoto-9.0.0-preview.4-Windows-x64' and
+                      not artifact['expired']]
+          assert len(matching) == 1, 'Expected exactly one verified Preview 4 artifact'
+          artifact = matching[0]
+          assert artifact.get('digest', '').startswith('sha256:'), 'Missing immutable artifact checksum'
+          expected_outer = artifact['digest'].split(':', 1)[1]
+          api = source_api + '/actions/artifacts/' + str(artifact['id']) + '/zip'
+          req = urllib.request.Request(api, headers={
+              'Authorization': 'Bearer ' + token,
+              'Accept': 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28'})
+          class SafeArtifactRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, request, fp, code, msg, headers, newurl):
+                  redirected = super().redirect_request(request, fp, code, msg, headers, newurl)
+                  if redirected and urllib.parse.urlsplit(newurl).hostname != urllib.parse.urlsplit(request.full_url).hostname:
+                      redirected.remove_header('Authorization')
+                      redirected.unredirected_hdrs.pop('Authorization', None)
+                  return redirected
+          opener = urllib.request.build_opener(SafeArtifactRedirect)
+          with opener.open(req, timeout=90) as response:
+              outer = response.read(100 * 1024 * 1024 + 1)
+          assert len(outer) < 100 * 1024 * 1024
+          assert hashlib.sha256(outer).hexdigest() == expected_outer, 'Artifact checksum mismatch'
+          stage = pathlib.Path('incoming/photo-9.0.0-preview.4')
+          stage.mkdir(parents=True, exist_ok=True)
+          with zipfile.ZipFile(io.BytesIO(outer)) as source_zip:
+              names = source_zip.namelist()
+              assert 'NeoWorks.Photo.exe' in names, 'Missing native GUI'
+              assert 'neophoto-cli.exe' in names, 'Missing CLI'
+              assert 'NeoWorks.Photo.app.json' in names, 'Missing app receipt'
+              manifest = json.loads(source_zip.read('NeoWorks.Photo.app.json').decode('utf-8-sig'))
+              assert manifest['version'] == '9.0.0-preview.4'
+              assert manifest['runtime'] == 'native'
+              assert manifest['appId'] == 'NeoWorks.Photo'
+              assert len(names) == len(set(n.lower() for n in names))
+              with zipfile.ZipFile(stage / 'package.zip', 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as output:
+                  for name in names:
+                      info = source_zip.getinfo(name)
+                      assert not name.startswith('/') and '..' not in pathlib.PurePosixPath(name).parts and '\\' not in name
+                      assert info.file_size <= 100 * 1024 * 1024
+                      if info.is_dir(): continue
+                      output.writestr(name, source_zip.read(info))
+          metadata = {
+              'appId': 'NeoWorks.Photo',
+              'version': '9.0.0-preview.4',
+              'runtime': 'native',
+              'channel': 'preview',
+              'size': (stage / 'package.zip').stat().st_size,
+              'sha256': publish.digest(stage / 'package.zip'),
+              'releaseNotes': 'Native Rust NeoPhoto Preview 4: all Preview 3 tools plus editable non-destructive raster masks: Brush hides and Eraser reveals masked areas. Uses DirectX 12 by default on Windows. This is a test preview; clone and heal remain unimplemented.'
+          }
+          (stage / 'release.json').write_text(json.dumps(metadata))
+          publish.validate(stage)
+          print('Verified package:', metadata['size'], metadata['sha256'])
+          PY
+      - name: Publish artifact and verify public download
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: christianrobertson36/neoworks-releases
+        run: |
+          python scripts/test_publish.py
+          python - <<'PY'
+          from pathlib import Path
+          import sys
+          sys.path.insert(0, 'scripts')
+          import publish
+          print(publish.publish(Path('incoming/photo-9.0.0-preview.4')))
+          PY
+      - name: Commit public Preview catalogue
+        run: |
+          git config user.name "NeoWorks release publisher"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add catalogue/preview.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Publish verified NeoPhoto 9.0.0-preview.4"
+          git push origin HEAD:main
