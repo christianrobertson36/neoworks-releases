@@ -3,12 +3,12 @@
   "apps": [
     {
       "appId": "NeoWorks.Photo",
-      "version": "9.0.0-preview.2",
+      "version": "9.0.0-preview.3",
       "runtime": "native",
-      "sha256": "f27fef943587fe6f5dd2caf4ea53b9523bb1bb054cf440646e21ddf210bc4c34",
-      "size": 8135985,
-      "url": "https://github.com/christianrobertson36/neoworks-releases/releases/download/NeoWorks.Photo-v9.0.0-preview.2-preview/NeoWorks.Photo-9.0.0-preview.2-Windows-x64.zip",
-      "releaseNotes": "Native Rust NeoPhoto Preview 2. Defaults to DirectX 12 on Windows to avoid Intel Vulkan driver startup crashes. Existing document/editing features remain a preview; advanced editing parity is in progress."
+      "sha256": "b78b6fe9ce618c8175033d4bb9dab7c846a71cf94f43022c7dd834b322e8c6fc",
+      "size": 8144226,
+      "url": "https://github.com/christianrobertson36/neoworks-releases/releases/download/NeoWorks.Photo-v9.0.0-preview.3-preview/NeoWorks.Photo-9.0.0-preview.3-Windows-x64.zip",
+      "releaseNotes": "Native Rust NeoPhoto Preview 3: zoom shortcuts, enhanced layer controls, rectangular selection shortcuts and selection-aware filters, and reveal-all layer mask creation/toggling. Uses DirectX 12 by default on Windows. This is a test preview; mask painting, clone and heal remain unimplemented."
     }
   ]
 }
