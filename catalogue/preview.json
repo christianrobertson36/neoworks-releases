@@ -3,12 +3,12 @@
   "apps": [
     {
       "appId": "NeoWorks.Photo",
-      "version": "9.0.0-preview.4",
+      "version": "9.0.0-preview.5",
       "runtime": "native",
-      "sha256": "02dcc92b4c6ac428eacdda9896feb497c2c9069741a0a1c5f55bf22028edc5cc",
-      "size": 8148337,
-      "url": "https://github.com/christianrobertson36/neoworks-releases/releases/download/NeoWorks.Photo-v9.0.0-preview.4-preview/NeoWorks.Photo-9.0.0-preview.4-Windows-x64.zip",
-      "releaseNotes": "Native Rust NeoPhoto Preview 4: all Preview 3 tools plus editable non-destructive raster masks: Brush hides and Eraser reveals masked areas. Uses DirectX 12 by default on Windows. This is a test preview; clone and heal remain unimplemented."
+      "sha256": "db2383359a06db80d2b22d7412fb6079073bece98cc839ae85b3edb08a85eb45",
+      "size": 8148509,
+      "url": "https://github.com/christianrobertson36/neoworks-releases/releases/download/NeoWorks.Photo-v9.0.0-preview.5-preview/NeoWorks.Photo-9.0.0-preview.5-Windows-x64.zip",
+      "releaseNotes": "Native Rust NeoPhoto Preview 5: all Preview 4 features plus a refreshed workspace header, document indicator and roomier tools and layers panels. Uses DirectX 12 by default on Windows. This is a test preview; clone and heal remain unimplemented; further workspace refinements are planned."
     }
   ]
 }
