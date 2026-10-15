@@ -41,7 +41,7 @@ jobs:
                   return json.load(response)
           run_id = 38764211327
           source_sha = '29315a2782f81896489ba7b5251a4698ce1d04ed'
-          for _ in range(90):
+          for _ in range(100):
               run = source_json('/actions/runs/' + str(run_id))
               assert run['head_sha'] == source_sha, 'Unexpected source revision'
               if run['status'] == 'completed':
