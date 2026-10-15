@@ -24,7 +24,7 @@ jobs:
           SOURCE_READ_TOKEN: ${{ secrets.NEOWORKS_SOURCE_READ_TOKEN }}
         run: |
           python - <<'PY'
-          import hashlib, io, json, os, pathlib, urllib.request, zipfile
+          import hashlib, io, json, os, pathlib, urllib.request, urllib.parse, zipfile
           import sys
           sys.path.insert(0, 'scripts')
           import publish
@@ -36,7 +36,15 @@ jobs:
               'Authorization': 'Bearer ' + token,
               'Accept': 'application/vnd.github+json',
               'X-GitHub-Api-Version': '2022-11-28'})
-          with urllib.request.urlopen(req, timeout=90) as response:
+          class SafeArtifactRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, request, fp, code, msg, headers, newurl):
+                  redirected = super().redirect_request(request, fp, code, msg, headers, newurl)
+                  if redirected and urllib.parse.urlsplit(newurl).hostname != urllib.parse.urlsplit(request.full_url).hostname:
+                      redirected.remove_header('Authorization')
+                      redirected.remove_unredirected_header('Authorization')
+                  return redirected
+          opener = urllib.request.build_opener(SafeArtifactRedirect)
+          with opener.open(req, timeout=90) as response:
               outer = response.read(100 * 1024 * 1024 + 1)
           assert len(outer) < 100 * 1024 * 1024
           assert hashlib.sha256(outer).hexdigest() == '504373ac482690d6dc606379cbb31800893ad1ea061d4b96a4b4d451afc354e5', 'Artifact checksum mismatch'
