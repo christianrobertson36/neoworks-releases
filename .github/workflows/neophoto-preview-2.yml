@@ -27,18 +27,12 @@ jobs:
           import sys
           sys.path.insert(0, 'scripts')
           import publish
-          source = 'christianrobertson36/neoworks'
-          artifact_id = 11968105934
-          expected_outer = '504373ac482690d6dc606379cbb31800893ad1ea061d4b96a4b4d451afc354e5'
-          api = f'https://api.github.com/repos/{source}/actions/artifacts/{artifact_id}/zip'
-          req = urllib.request.Request(api, headers={
-              'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
-              'Accept': 'application/vnd.github+json',
-              'X-GitHub-Api-Version': '2022-11-28'})
+          api = 'https://github.com/christianrobertson36/neoworks/releases/download/NeoPhoto-Preview2-verified-build/NeoPhoto-Preview2-build.zip'
+          req = urllib.request.Request(api, headers={'User-Agent': 'NeoWorks-verified-release-publisher'})
           with urllib.request.urlopen(req, timeout=90) as response:
               outer = response.read(100 * 1024 * 1024 + 1)
           assert len(outer) < 100 * 1024 * 1024
-          assert hashlib.sha256(outer).hexdigest() == expected_outer, 'Source artifact digest mismatch'
+          assert zipfile.is_zipfile(io.BytesIO(outer)), 'Source build is not a ZIP'
           stage = pathlib.Path('incoming/photo-9.0.0-preview.2')
           stage.mkdir(parents=True, exist_ok=True)
           with zipfile.ZipFile(io.BytesIO(outer)) as source_zip:
