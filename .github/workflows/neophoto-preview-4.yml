@@ -39,8 +39,8 @@ jobs:
           def source_json(path):
               with urllib.request.urlopen(urllib.request.Request(source_api + path, headers=headers), timeout=90) as response:
                   return json.load(response)
-          run_id = 38777603437
-          source_sha = '77984252c480479ae533e4566cc6f5e2a1193f0e'
+          run_id = 38777858498
+          source_sha = '38cf4534f6d82a536f52f5024751cb06eda0c52f'
           for _ in range(100):
               run = source_json('/actions/runs/' + str(run_id))
               assert run['head_sha'] == source_sha, 'Unexpected source revision'
