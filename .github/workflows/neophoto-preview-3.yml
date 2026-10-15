@@ -24,14 +24,40 @@ jobs:
           SOURCE_READ_TOKEN: ${{ secrets.NEOWORKS_SOURCE_READ_TOKEN }}
         run: |
           python - <<'PY'
-          import hashlib, io, json, os, pathlib, urllib.request, urllib.parse, zipfile
+          import hashlib, io, json, os, pathlib, urllib.request, urllib.parse, zipfile, time
           import sys
           sys.path.insert(0, 'scripts')
           import publish
           token = os.environ.get('SOURCE_READ_TOKEN', '')
           if not token:
               raise SystemExit('Set repository Actions secret NEOWORKS_SOURCE_READ_TOKEN with read access to the private neoworks repository')
-          api = 'https://api.github.com/repos/christianrobertson36/neoworks/actions/artifacts/ARTIFACT_ID/zip'
+          source_api = 'https://api.github.com/repos/christianrobertson36/neoworks'
+          headers = {'Authorization': 'Bearer ' + token,
+                     'Accept': 'application/vnd.github+json',
+                     'X-GitHub-Api-Version': '2022-11-28'}
+          def source_json(path):
+              with urllib.request.urlopen(urllib.request.Request(source_api + path, headers=headers), timeout=90) as response:
+                  return json.load(response)
+          run_id = 38764211327
+          source_sha = '29315a2782f81896489ba7b5251a4698ce1d04ed'
+          for _ in range(90):
+              run = source_json('/actions/runs/' + str(run_id))
+              assert run['head_sha'] == source_sha, 'Unexpected source revision'
+              if run['status'] == 'completed':
+                  assert run['conclusion'] == 'success', 'Source Windows CI did not pass'
+                  break
+              time.sleep(20)
+          else:
+              raise SystemExit('Timed out waiting for verified Windows CI')
+          artifacts = source_json('/actions/runs/' + str(run_id) + '/artifacts')['artifacts']
+          matching = [artifact for artifact in artifacts if
+                      artifact['name'] == 'NeoPhoto-9.0.0-preview.3-Windows-x64' and
+                      not artifact['expired']]
+          assert len(matching) == 1, 'Expected exactly one verified Preview 3 artifact'
+          artifact = matching[0]
+          assert artifact.get('digest', '').startswith('sha256:'), 'Missing immutable artifact checksum'
+          expected_outer = artifact['digest'].split(':', 1)[1]
+          api = source_api + '/actions/artifacts/' + str(artifact['id']) + '/zip'
           req = urllib.request.Request(api, headers={
               'Authorization': 'Bearer ' + token,
               'Accept': 'application/vnd.github+json',
@@ -47,7 +73,7 @@ jobs:
           with opener.open(req, timeout=90) as response:
               outer = response.read(100 * 1024 * 1024 + 1)
           assert len(outer) < 100 * 1024 * 1024
-          assert hashlib.sha256(outer).hexdigest() == 'ARTIFACT_SHA256', 'Artifact checksum mismatch'
+          assert hashlib.sha256(outer).hexdigest() == expected_outer, 'Artifact checksum mismatch'
           stage = pathlib.Path('incoming/photo-9.0.0-preview.3')
           stage.mkdir(parents=True, exist_ok=True)
           with zipfile.ZipFile(io.BytesIO(outer)) as source_zip:
