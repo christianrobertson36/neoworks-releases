@@ -1,0 +1,94 @@
+name: Publish verified NeoPhoto Preview 2
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/neophoto-preview-2.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: public-release-catalogue
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Retrieve and verify source Windows build artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import hashlib, io, json, os, pathlib, urllib.request, zipfile
+          import sys
+          sys.path.insert(0, 'scripts')
+          import publish
+          source = 'christianrobertson36/neoworks'
+          artifact_id = 11968105934
+          expected_outer = '504373ac482690d6dc606379cbb31800893ad1ea061d4b96a4b4d451afc354e5'
+          api = f'https://api.github.com/repos/{source}/actions/artifacts/{artifact_id}/zip'
+          req = urllib.request.Request(api, headers={
+              'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+              'Accept': 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28'})
+          with urllib.request.urlopen(req, timeout=90) as response:
+              outer = response.read(100 * 1024 * 1024 + 1)
+          assert len(outer) < 100 * 1024 * 1024
+          assert hashlib.sha256(outer).hexdigest() == expected_outer, 'Source artifact digest mismatch'
+          stage = pathlib.Path('incoming/photo-9.0.0-preview.2')
+          stage.mkdir(parents=True, exist_ok=True)
+          with zipfile.ZipFile(io.BytesIO(outer)) as source_zip:
+              names = source_zip.namelist()
+              assert 'NeoWorks.Photo.exe' in names, 'Missing native GUI'
+              assert 'neophoto-cli.exe' in names, 'Missing CLI'
+              assert 'NeoWorks.Photo.app.json' in names, 'Missing app receipt'
+              manifest = json.loads(source_zip.read('NeoWorks.Photo.app.json').decode('utf-8-sig'))
+              assert manifest['version'] == '9.0.0-preview.2'
+              assert manifest['runtime'] == 'native'
+              assert manifest['appId'] == 'NeoWorks.Photo'
+              assert len(names) == len(set(n.lower() for n in names))
+              with zipfile.ZipFile(stage / 'package.zip', 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as output:
+                  for name in names:
+                      info = source_zip.getinfo(name)
+                      assert not name.startswith('/') and '..' not in pathlib.PurePosixPath(name).parts and '\\' not in name
+                      assert info.file_size <= 100 * 1024 * 1024
+                      if info.is_dir(): continue
+                      output.writestr(name, source_zip.read(info))
+          metadata = {
+              'appId': 'NeoWorks.Photo',
+              'version': '9.0.0-preview.2',
+              'runtime': 'native',
+              'channel': 'preview',
+              'size': (stage / 'package.zip').stat().st_size,
+              'sha256': publish.digest(stage / 'package.zip'),
+              'releaseNotes': 'Native Rust NeoPhoto Preview 2. Defaults to DirectX 12 on Windows to avoid Intel Vulkan driver startup crashes. Existing document/editing features remain a preview; advanced editing parity is in progress.'
+          }
+          (stage / 'release.json').write_text(json.dumps(metadata))
+          publish.validate(stage)
+          print('Verified package:', metadata['size'], metadata['sha256'])
+          PY
+      - name: Publish artifact and verify public download
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: christianrobertson36/neoworks-releases
+        run: |
+          python scripts/test_publish.py
+          python - <<'PY'
+          from pathlib import Path
+          import sys
+          sys.path.insert(0, 'scripts')
+          import publish
+          print(publish.publish(Path('incoming/photo-9.0.0-preview.2')))
+          PY
+      - name: Commit public Preview catalogue
+        run: |
+          git config user.name "NeoWorks release publisher"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add catalogue/preview.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Publish verified NeoPhoto 9.0.0-preview.2"
+          git push origin HEAD:main
