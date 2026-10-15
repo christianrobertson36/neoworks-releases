@@ -3,12 +3,12 @@
   "apps": [
     {
       "appId": "NeoWorks.Photo",
-      "version": "9.0.0-preview.3",
+      "version": "9.0.0-preview.4",
       "runtime": "native",
-      "sha256": "b78b6fe9ce618c8175033d4bb9dab7c846a71cf94f43022c7dd834b322e8c6fc",
-      "size": 8144226,
-      "url": "https://github.com/christianrobertson36/neoworks-releases/releases/download/NeoWorks.Photo-v9.0.0-preview.3-preview/NeoWorks.Photo-9.0.0-preview.3-Windows-x64.zip",
-      "releaseNotes": "Native Rust NeoPhoto Preview 3: zoom shortcuts, enhanced layer controls, rectangular selection shortcuts and selection-aware filters, and reveal-all layer mask creation/toggling. Uses DirectX 12 by default on Windows. This is a test preview; mask painting, clone and heal remain unimplemented."
+      "sha256": "02dcc92b4c6ac428eacdda9896feb497c2c9069741a0a1c5f55bf22028edc5cc",
+      "size": 8148337,
+      "url": "https://github.com/christianrobertson36/neoworks-releases/releases/download/NeoWorks.Photo-v9.0.0-preview.4-preview/NeoWorks.Photo-9.0.0-preview.4-Windows-x64.zip",
+      "releaseNotes": "Native Rust NeoPhoto Preview 4: all Preview 3 tools plus editable non-destructive raster masks: Brush hides and Eraser reveals masked areas. Uses DirectX 12 by default on Windows. This is a test preview; clone and heal remain unimplemented."
     }
   ]
 }
