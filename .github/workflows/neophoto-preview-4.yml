@@ -2,7 +2,7 @@ name: Publish verified NeoPhoto Preview 4
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/neophoto-preview-3.yml']
+    paths: ['.github/workflows/neophoto-preview-4.yml']
   workflow_dispatch:
 permissions:
   contents: write
